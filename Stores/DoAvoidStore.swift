@@ -7,15 +7,32 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 final class DoAvoidStore: ObservableObject {
-    @Published var items: [DoAvoidItem] = [
-        DoAvoidItem(title: "Stretching", kind: .doItem),
-        DoAvoidItem(title: "Veggies", kind: .doItem),
-        DoAvoidItem(title: "Soda", kind: .avoidItem),
-        DoAvoidItem(title: "Fast Food", kind: .avoidItem),
-        DoAvoidItem(title: "Late Night Snacking", kind: .avoidItem)
-    ]
+    private let persistence: PersistenceStore
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+
+        let dir = AppDirectories.applicationSupport()
+        self.persistence = PersistenceStore(baseDirectory: dir)
+
+        if let saved: [DoAvoidItem] = persistence.load() {
+            self.items = saved
+        } else {
+            self.items = []
+        }
+
+        $items
+            .dropFirst()
+            .sink { [weak self] items in
+                self?.persistence.save(items)
+            }
+            .store(in: &cancellables)
+    }
+
+    @Published var items: [DoAvoidItem] = []
     
     func toggleToday(for itemID: UUID) {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else {
