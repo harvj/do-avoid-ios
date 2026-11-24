@@ -87,7 +87,7 @@ scripts/test-simulator-upgrade.sh /path/to/baseline/DoAvoid.app /path/to/upgrade
 
 The normal backup is a prior saved state, so recovery can omit changes newer than that snapshot. A first save on a new installation has no prior snapshot to rotate. Signed device and TestFlight upgrade checks remain in P0.4 and P0.5.
 
-### First P0.3 assignment
+### P0.3a — Internal distribution and progression lab
 
 Build a development-only progression environment in simulator and development builds. Reuse the real SwiftUI Field and Timeline components with the same parameterized progression logic used to project their examples. Inject the current day and simulated histories. Provide fast side-by-side or switchable comparisons of candidate parameters, visual mappings, and lifecycle behavior. Include controls and reproducible fixtures for:
 
@@ -98,3 +98,5 @@ Build a development-only progression environment in simulator and development bu
 Create examples in memory or a development-specific store with no path to the production writer. Keep scenario data and controls out of App Store builds through compile-time exclusion and verify the Release bundle. Tests should cover deterministic projections, parameter changes, historical edits, and data isolation. Record the reviewed scenarios and decisions before declaring the algorithm, color system, or visual design complete.
 
 Progression should derive from recorded day labels, item type, creation day, explicit marks, and an injected evaluation day. Preserve the distinction between an implicit Avoid success and a recorded event. The current archive flag captures the latest state. If review calls for reconstructing exact maturation, pause periods, or reactivation dates, those would require explicit lifecycle events or an additive schema change. Do not infer historical archive dates from blank days or store any experimental score as canonical history.
+
+The [Do/Avoid Dev runbook](docs/DOAVOID_DEV.md) covers internal TestFlight provisioning, local delivery, scenario review, and the P0.3b entry conditions.

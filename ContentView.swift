@@ -15,26 +15,15 @@ enum AppMode {
     case create         // swipe-right input
 }
 
-enum DisplayMode: CaseIterable {
-    case minimal        // no badges
-    case withBadges     // default
-    // future: .diagnostic, .debug, etc.
-}
-
-enum FilterMode {
-    case all
-    case dosOnly
-    case avoidsOnly
-}
-
 struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var store: DoAvoidStore
 
-    @State private var filterMode: FilterMode = .all
     @State private var appMode: AppMode = .field
-    @State private var displayMode: DisplayMode = .withBadges
+    #if DOAVOID_LAB
+    @State private var showsLab = ProcessInfo.processInfo.arguments.contains("--progression-lab")
+    #endif
 
     var isLandscape: Bool {
         verticalSizeClass == .compact
@@ -55,6 +44,21 @@ struct ContentView: View {
                 mainContent
             }
         }
+        #if DOAVOID_LAB
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack {
+                Text("Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Progression Lab") { showsLab = true }
+                    .padding(.vertical, 8)
+            }
+            .padding(.horizontal)
+            .background(.regularMaterial)
+        }
+        .sheet(isPresented: $showsLab) { ProgressionLab() }
+        #endif
         .alert(item: $store.notice) { notice in
             switch notice {
             case .recovered:
@@ -85,87 +89,16 @@ struct ContentView: View {
 
     @ViewBuilder private var mainContent: some View {
         if isLandscape {
-            TimelineView(store: store)
-
+            TimelineView(items: store.items, day: store.today)
         } else {
-
-            ZStack(alignment: .bottom) {
-
-                // Main Content
-                Group {
-                    switch appMode {
-
-                    case .field:
-                        FieldView(
-                            store: store,
-                            displayMode: displayMode,
-                            filterMode: filterMode,
-                            onAdd: { openCreate() },
-                            onSwipeUp: toggleAvoids,
-                            onSwipeDown: toggleDos
-                        )
-
-                    case .create:
-                        CreateItemView(
-                            store: store,
-                            onDone: closeCreate
-                        )
-                    }
+            switch appMode {
+            case .field:
+                FieldView(items: store.items, day: store.today, onAdd: openCreate) { id in
+                    store.toggleToday(for: id)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .create:
+                CreateItemView(store: store, onDone: closeCreate)
             }
-            .onReceive(store.$items) { _ in
-                validateFilter()
-            }
-        }
-    }
-
-    var hasDos: Bool {
-        store.items.contains { $0.kind == .doItem }
-    }
-
-    var hasAvoids: Bool {
-        store.items.contains { $0.kind == .avoidItem }
-    }
-
-    func validateFilter() {
-
-        switch filterMode {
-
-        case .dosOnly where !hasDos:
-            filterMode = .all
-
-        case .avoidsOnly where !hasAvoids:
-            filterMode = .all
-
-        default:
-            break
-        }
-    }
-
-    func toggleAvoids() {
-        guard hasAvoids else {
-            filterMode = .all
-            return
-        }
-
-        if filterMode == .dosOnly {
-            filterMode = .all
-        } else {
-            filterMode = .avoidsOnly
-        }
-    }
-    
-    func toggleDos() {
-        guard hasDos else {
-            filterMode = .all
-            return
-        }
-
-        if filterMode == .avoidsOnly {
-            filterMode = .all
-        } else {
-            filterMode = .dosOnly
         }
     }
 

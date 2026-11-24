@@ -31,12 +31,19 @@ struct CivilDay: Codable, Hashable, Comparable {
         lhs.stamp < rhs.stamp
     }
 
+    func advanced(by days: Int) -> Self {
+        let date = Self.utcCalendar.date(byAdding: .day, value: days, to: utcDate)!
+        return Self(containing: date, in: Self.utc)
+    }
+
     func distance(to day: Self) -> Int {
         Self.utcCalendar.dateComponents([.day], from: utcDate, to: day.utcDate).day!
     }
 
-    func formatted() -> String {
-        var style = Date.FormatStyle(date: .abbreviated, time: .omitted)
+    func formatted(includeYear: Bool = true) -> String {
+        var style = includeYear
+            ? Date.FormatStyle(date: .abbreviated, time: .omitted)
+            : Date.FormatStyle().month(.abbreviated).day()
         style.calendar = Self.utcCalendar
         style.timeZone = Self.utc
         return utcDate.formatted(style)

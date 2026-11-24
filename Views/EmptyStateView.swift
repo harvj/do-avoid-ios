@@ -20,10 +20,6 @@ struct EmptyStateView: View {
             Text("Nothing here yet.")
                 .font(.body)
                 .foregroundColor(.secondary)
-
-            Text("Pull up to create your first item.")
-                .font(.footnote)
-                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
