@@ -29,6 +29,10 @@ It supports memory without turning it into pressure.
 
 ---
 
+## Intended v1.0 design
+
+The sections below describe the intended experience. See the [release assessment and roadmap](RELEASE_PLAN.md) for what the current build supports, known gaps, and release gates.
+
 ## Core Concept
 
 Each item is either:
@@ -168,8 +172,9 @@ It is designed to be opened when useful, not when demanded.
 
 ## Pricing Intent
 
-- One-time purchase
-- No subscriptions
+- Free download with core functionality available indefinitely
+- One non-consumable, one-time in-app purchase for the complete v1.0 feature set
+- No subscriptions in v1.0
 - No accounts
 - No analytics
 - No data export requirements
