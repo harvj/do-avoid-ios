@@ -49,8 +49,8 @@ struct FieldView: View {
                             : Color.gray.opacity(0.25),
                             isTop: index == 0,
                             isBottom: index == visibleItems.count - 1,
-                            daysCount: item.entries.values.filter { $0.isMarked }.count,
-                            isMarkedToday: (item.entry(for: Date())?.isMarked ?? false),
+                            daysCount: item.markedDays,
+                            isMarkedToday: item.entries[store.today]?.isMarked ?? false,
                             showBadges: displayMode == .withBadges
                         )
                         .frame(height: rowHeight)

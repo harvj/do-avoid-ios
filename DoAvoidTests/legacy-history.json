@@ -1,0 +1,49 @@
+[
+  {
+    "createdAt" : 731592000,
+    "entries" : [
+      731750400,
+      {
+        "count" : 12,
+        "date" : 731750400,
+        "id" : "16F70187-1A68-42DD-A2B5-07CCC3DBD559",
+        "isMarked" : true,
+        "note" : "First chapter"
+      },
+      731833200,
+      {
+        "date" : 731833200,
+        "id" : "A9B1531B-E5DC-45F3-9E47-2255F9C0C83E",
+        "isMarked" : false,
+        "note" : "Made a plan"
+      }
+    ],
+    "id" : "5099B771-40D9-4FAD-A4F5-D053B379740A",
+    "isRetired" : false,
+    "kind" : "doItem",
+    "title" : "Read"
+  },
+  {
+    "createdAt" : 731592000,
+    "entries" : [
+      731833200,
+      {
+        "count" : -2,
+        "date" : 731833200,
+        "id" : "3ACA4CD6-21C8-46AF-9FEB-56A3156F5F11",
+        "isMarked" : true
+      },
+      731919600,
+      {
+        "count" : 0,
+        "date" : 731919600,
+        "id" : "A536CD3B-663B-424D-8445-054C25323258",
+        "isMarked" : false
+      }
+    ],
+    "id" : "3A376FF1-28FE-412A-A442-7E17AB558857",
+    "isRetired" : true,
+    "kind" : "avoidItem",
+    "title" : "Late caffeine"
+  }
+]

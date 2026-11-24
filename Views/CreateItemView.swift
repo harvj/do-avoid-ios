@@ -52,17 +52,16 @@ struct CreateItemView: View {
                 .pickerStyle(.segmented)
 
                 Button {
-                    store.items.append(
-                        DoAvoidItem(title: title, kind: kind)
-                    )
-                    onDone()
+                    if store.createItem(title: title, kind: kind) {
+                        onDone()
+                    }
                 } label: {
                     Text("Add")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 Spacer(minLength: 0)
             }
@@ -74,7 +73,7 @@ struct CreateItemView: View {
 
 struct CreateItemView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView(store: DoAvoidStore())
     }
 }
 

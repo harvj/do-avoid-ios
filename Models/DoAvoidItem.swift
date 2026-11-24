@@ -1,157 +1,147 @@
-//
-//  DoAvoidItem.swift
-//  DoAvoid
-//
-//  Created by Jim Harvey on 1/31/26.
-//
-
 import Foundation
 
-struct DoAvoidItem: Identifiable, Codable {
+enum DailyStatus: Equatable {
+    case outsideLifetime
+    case neutral
+    case completed
+    case successful
+    case violated
+}
+
+struct DoAvoidItem: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
     let kind: DoAvoidKind
     let createdAt: Date
-
-    /// All tracked days, keyed by normalized date
-    private(set) var entries: [Date: DayEntry]
-
-    /// Whether this item is no longer active (used mainly for Avoids)
-    private(set) var isRetired: Bool
+    let createdDay: CivilDay
+    private(set) var entries: [CivilDay: DayEntry]
+    var isRetired: Bool
 
     init(
         title: String,
         kind: DoAvoidKind,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        timeZone: TimeZone = .autoupdatingCurrent
     ) {
-        self.id = UUID()
+        self.init(
+            id: UUID(), title: title, kind: kind, createdAt: createdAt,
+            createdDay: CivilDay(containing: createdAt, in: timeZone), entries: [:], isRetired: false
+        )
+    }
+
+    init(
+        id: UUID, title: String, kind: DoAvoidKind, createdAt: Date,
+        createdDay: CivilDay, entries: [CivilDay: DayEntry], isRetired: Bool
+    ) {
+        self.id = id
         self.title = title
         self.kind = kind
         self.createdAt = createdAt
-        self.entries = [:]
-        self.isRetired = false
+        self.createdDay = createdDay
+        self.entries = entries
+        self.isRetired = isRetired
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, kind, createdAt, createdDay, entries, isRetired
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let records = try container.decode([DayEntry].self, forKey: .entries)
+        var entries: [CivilDay: DayEntry] = [:]
+        var ids: Set<UUID> = []
+        for entry in records {
+            guard entries[entry.day] == nil, ids.insert(entry.id).inserted else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .entries, in: container, debugDescription: "Duplicate day or entry ID"
+                )
+            }
+            entries[entry.day] = entry
+        }
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            title: try container.decode(String.self, forKey: .title),
+            kind: try container.decode(DoAvoidKind.self, forKey: .kind),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            createdDay: try container.decode(CivilDay.self, forKey: .createdDay),
+            entries: entries,
+            isRetired: try container.decode(Bool.self, forKey: .isRetired)
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(createdDay, forKey: .createdDay)
+        try container.encode(allEntriesSorted, forKey: .entries)
+        try container.encode(isRetired, forKey: .isRetired)
+    }
+
+    var allEntriesSorted: [DayEntry] {
+        entries.values.sorted { $0.day < $1.day }
+    }
+
+    var markedDays: Int {
+        entries.values.filter { $0.isMarked }.count
+    }
+
+    func status(on day: CivilDay) -> DailyStatus {
+        let entry = entries[day]
+        guard entry != nil || day >= createdDay else { return .outsideLifetime }
+        let marked = entry?.isMarked ?? false
+        switch kind {
+        case .doItem: return marked ? .completed : .neutral
+        case .avoidItem: return marked ? .violated : .successful
+        }
+    }
+
+    mutating func toggleMarked(on day: CivilDay) {
+        var entry = entries[day] ?? DayEntry(day: day)
+        entry.isMarked.toggle()
+        entries[day] = entry
+    }
+
+    mutating func updateEntry(on day: CivilDay, isMarked: Bool, note: String?, count: Int?) {
+        entries[day] = DayEntry(
+            id: entries[day]?.id ?? UUID(), day: day, isMarked: isMarked, note: note, count: count
+        )
     }
 }
 
 extension DoAvoidItem {
     static let doCycleLength = 40
-    
-    /// Total number of positive actions taken
+
     var progressUnits: Int {
-        guard kind == .doItem else { return 0 }
-        return entries.values.filter { $0.isMarked }.count
+        kind == .doItem ? markedDays : 0
     }
 
-    /// How many full cycles have been completed
-    var completedCycles: Int {
-        progressUnits / Self.doCycleLength
+    var completedCycles: Int { progressUnits / Self.doCycleLength }
+    var targetPhase: Int { progressUnits % Self.doCycleLength }
+
+    func missedDays(until day: CivilDay) -> Int {
+        guard day >= createdDay else { return 0 }
+        let recordedDays = entries.keys.filter { $0 >= createdDay && $0 <= day }.count
+        return createdDay.distance(to: day) + 1 - recordedDays
     }
 
-    /// Position within the current cycle (0..<40)
-    var targetPhase: Int {
-        progressUnits % Self.doCycleLength
-    }
-    
-    /// Total days marked
-    var markedDays: Int {
-        entries.values.filter { $0.isMarked }.count
-    }
-    
-    var allEntriesSorted: [DayEntry] {
-        entries.values.sorted { $0.date < $1.date }
-    }
-    
-    /// Days since creation where no entry exists
-    func missedDays(until date: Date = Date()) -> Int {
-        let start = createdAt.normalizedDay
-        let end = date.normalizedDay
-
-        guard let days = Calendar.current.dateComponents([.day], from: start, to: end).day else {
-            return 0
-        }
-
-        let totalPossible = days + 1
-        return max(0, totalPossible - entries.count)
-    }
-    
-    func entry(for date: Date) -> DayEntry? {
-        entries[date.normalizedDay]
-    }
-
-    mutating func toggleMarked(on date: Date) {
-        let day = date.normalizedDay
-
-        if var existing = entries[day] {
-            existing.isMarked.toggle()
-            entries[day] = existing
-        } else {
-            entries[day] = DayEntry(date: day, isMarked: true)
+    // Existing prototype thresholds. P0.3 discovery will evaluate candidate rules separately.
+    func avoidState(asOf day: CivilDay) -> AvoidState {
+        guard kind == .avoidItem else { return .solid }
+        let lastViolation = entries.values.filter { $0.isMarked && $0.day <= day }.map(\.day).max()
+        let elapsed = max(0, (lastViolation ?? createdDay).distance(to: day))
+        switch elapsed {
+        case 0..<7: return .solid
+        case 7..<21: return .cracked
+        case 21..<40: return .open
+        default: return .overgrown
         }
     }
-    
-    mutating func addEntry(_ entry: DayEntry) {
-        entries[entry.date] = entry
-    }
 
-    mutating func updateEntry(
-        on date: Date,
-        isMarked: Bool,
-        note: String?,
-        count: Int?
-    ) {
-        let day = date.normalizedDay
-        entries[day] = DayEntry(
-            date: day,
-            isMarked: isMarked,
-            note: note,
-            count: count
-        )
-    }
-    
-    mutating func checkForRetirement(asOf date: Date = Date()) {
-        guard kind == .avoidItem else { return }
-
-        if avoidState(asOf: date) == .overgrown {
-            isRetired = true
-        }
-    }
-    
-    /// Last day a violation occurred
-    var lastViolationDate: Date? {
-        guard kind == .avoidItem else { return nil }
-
-        return entries.values
-            .filter { $0.isMarked }
-            .map { $0.date }
-            .max()
-    }
-
-    /// Days since last violation (or since creation if none)
-    func daysSinceLastViolation(asOf date: Date = Date()) -> Int {
-        guard kind == .avoidItem else { return 0 }
-
-        let reference = lastViolationDate ?? createdAt
-        let start = reference.normalizedDay
-        let end = date.normalizedDay
-
-        return Calendar.current
-            .dateComponents([.day], from: start, to: end)
-            .day ?? 0
-    }
-
-    /// Healing-based avoid state
-    func avoidState(asOf date: Date = Date()) -> AvoidState {
-        let days = daysSinceLastViolation(asOf: date)
-
-        switch days {
-        case 0..<7:
-            return .solid
-        case 7..<21:
-            return .cracked
-        case 21..<40:
-            return .open
-        default:
-            return .overgrown
-        }
+    mutating func checkForRetirement(asOf day: CivilDay) {
+        if avoidState(asOf: day) == .overgrown { isRetired = true }
     }
 }

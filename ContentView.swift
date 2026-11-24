@@ -29,7 +29,8 @@ enum FilterMode {
 
 struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @StateObject private var store = DoAvoidStore()
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject var store: DoAvoidStore
 
     @State private var filterMode: FilterMode = .all
     @State private var appMode: AppMode = .field
@@ -40,6 +41,49 @@ struct ContentView: View {
     }
 
     var body: some View {
+        Group {
+            if let loadError = store.loadError {
+                VStack(spacing: 16) {
+                    Text("Saved History Unavailable")
+                        .font(.headline)
+                    Text(loadError)
+                        .multilineTextAlignment(.center)
+                    Button("Retry Loading History") { store.reload() }
+                }
+                .padding()
+            } else {
+                mainContent
+            }
+        }
+        .alert(item: $store.notice) { notice in
+            switch notice {
+            case .recovered:
+                return Alert(
+                    title: Text("History Restored"),
+                    message: Text(notice.message),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .saveFailed:
+                return Alert(
+                    title: Text("Couldn’t Save"),
+                    message: Text(notice.message),
+                    primaryButton: .default(Text("OK")),
+                    secondaryButton: .default(Text("Reload History"), action: store.reload)
+                )
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { store.refreshToday() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            store.refreshToday()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            store.refreshToday()
+        }
+    }
+
+    @ViewBuilder private var mainContent: some View {
         if isLandscape {
             TimelineView(store: store)
 
@@ -154,6 +198,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(store: DoAvoidStore())
 }
 

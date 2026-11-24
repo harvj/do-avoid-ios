@@ -9,11 +9,11 @@ import SwiftUI
 
 @main
 struct DoAvoidApp: App {
-    typealias Day = Date
+    @StateObject private var store = DoAvoidStore()
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(store: store)
         }
     }
 }

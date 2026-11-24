@@ -135,16 +135,16 @@ There are no artificial scores.
 
 ---
 
-## Color System (Optional View)
+## Color Progression and Maturation
 
-The color system provides a slow, visual summary of engagement patterns.
+Color progression, degradation, recovery, and maturation are core to v1.0. The rules and presentation below describe design intent and will be reviewed through working Field and Timeline examples.
 
 - Do items move through a gradual spectrum
 - Avoid items subtly degrade and recover
 - Extended inactivity returns items toward baseline
 - Re-engagement accelerates recovery
 
-Color is treated as an optional interpretive layer, not a primary metric.
+Color conveys progression alongside accessible status and history. Exact mappings, timing, and interactions will be selected after prototype review.
 
 ---
 

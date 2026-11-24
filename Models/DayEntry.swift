@@ -1,38 +1,19 @@
-//
-//  DayEntry.swift
-//  DoAvoid
-//
-//  Created by Jim Harvey on 2/3/26.
-//
-
 import Foundation
 
-/// Represents one calendar day for a single item
 struct DayEntry: Identifiable, Codable, Equatable {
     let id: UUID
-    let date: Date
+    let day: CivilDay
 
-    /// Whether the item was marked on this day
+    /// A completion for Do and a violation for Avoid.
     var isMarked: Bool
-
-    /// Optional freeform note (very minimal journaling)
     var note: String?
-
-    /// Optional numeric value (meaning defined by user)
-    /// e.g. glasses of water, minutes, reps, etc.
     var count: Int?
 
-    init(
-        date: Date,
-        isMarked: Bool = false,
-        note: String? = nil,
-        count: Int? = nil
-    ) {
-        self.id = UUID()
-        self.date = DayEntry.normalize(date)
+    init(id: UUID = UUID(), day: CivilDay, isMarked: Bool = false, note: String? = nil, count: Int? = nil) {
+        self.id = id
+        self.day = day
         self.isMarked = isMarked
         self.note = note
         self.count = count
     }
 }
-

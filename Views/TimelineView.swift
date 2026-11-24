@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 struct TimelineView: View {
-    let store: DoAvoidStore
+    @ObservedObject var store: DoAvoidStore
 
     var body: some View {
         ScrollView {
@@ -21,7 +21,7 @@ struct TimelineView: View {
 
                         let markedDates = item.entries.values
                             .filter { $0.isMarked }
-                            .map { $0.date }
+                            .map { $0.day }
                         
                         if markedDates.isEmpty {
                             Text("No history yet")
@@ -31,7 +31,7 @@ struct TimelineView: View {
                                 markedDates.sorted(by: >),
                                 id: \.self
                             ) { day in
-                                Text(day.formatted(date: .abbreviated, time: .omitted))
+                                Text(day.formatted())
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
