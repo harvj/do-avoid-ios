@@ -2,15 +2,45 @@
 
 Do/Avoid Dev uses the same SwiftUI app target as production, with its own icon, display name and bundle identifier, `com.jimharvey.DoAvoid.dev`. iOS gives it a separate app container. The Progression Lab owns in-memory fixture history and has no reference to an app store or persistence writer. The public `DoAvoid` scheme compiles without the lab and rejects a build with both production and lab flags. The distribution script targets only the Dev identity and uses Apple's **TestFlight Internal Only** export option.
 
-Local verification used Xcode 26.2 with iOS 26.2. The Dev suite passed 21 tests and the production suite passed 17. Both unsigned device builds compiled, and side-by-side simulator installation verified separate containers and production exclusion. The signing probe found no matching Dev provisioning profile. App Store Connect processing and physical iPhone installation and updates are pending Apple setup.
+## Free local installation on a personal iPhone
 
-## One-time TestFlight setup
+Run from the repository root with the iPhone unlocked:
+
+```sh
+./scripts/install-dev-iphone.sh
+```
+
+The installer selects a reachable paired iPhone, requests a development certificate and provisioning profile through Xcode automatic signing as needed, builds `DevDebug`, and checks the app ID, signature, team, profile expiration, and device authorization. It installs the same Dev app in place and launches it with CoreDevice. The installer never uninstalls the app or removes device data. Build output is logged to `DerivedData/LocaliPhoneDev/build.log`.
+
+### One-time setup
+
+1. In Xcode → Settings → Accounts, sign in with your Apple Account and confirm it lists a **Personal Team**. Complete any account prompts yourself. The script defaults to the repository's configured team `522376PKLR`, which matches the development certificate seen on this Mac. If Xcode shows a different Personal Team ID, set `DOAVOID_PERSONAL_TEAM` in your shell before running the installer. [Apple Personal Team setup](https://developer.apple.com/help/account/basics/about-your-developer-account)
+2. Connect and unlock the iPhone over USB. Accept **Trust This Computer** if prompted. If pairing needs attention, use Xcode → Window → Devices and Simulators. If iOS prompts for Developer Mode, enable it in Settings → Privacy & Security, restart, and confirm on the phone. Follow any first-launch developer trust prompt for your own signing account. [Running on a physical device](https://developer.apple.com/documentation/Xcode/running-your-app-on-simulated-or-physical-devices) · [Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+3. Run the installer. Its automatic provisioning flags permit Xcode to register the selected device and obtain or refresh the profile using the account signed into Xcode. If Apple needs an interactive sign-in or signing approval, complete that once in Xcode and retry. If more than one iPhone is reachable, use `--device` with the ID shown by `xcrun devicectl list devices`.
+
+### Wireless updates and renewal
+
+After the first wired install, keep the Mac and iPhone on the same Wi-Fi network with IPv6 available. Unplug the phone and check `xcrun devicectl list devices`. If the paired phone is reachable, the installer can use CoreDevice's network transport. If it shows unavailable, reconnect by USB. [Apple device pairing and Wi-Fi](https://developer.apple.com/documentation/Xcode/managing-your-simulated-and-physical-devices-in-device-hub)
+
+Free profiles expire seven days after issuance. Run the same installer to let Xcode refresh signing and install in place. Use `./scripts/install-dev-iphone.sh --renew` if an expired cached build is still being used. This forces a clean rebuild in the installer's local DerivedData and lets Xcode reevaluate provisioning. Keep the same bundle ID and signing team so iOS can replace the app in place. If a different signing team already installed that ID, leave the existing app installed and resolve the team mismatch before retrying. Apple documents Personal Team limits of 10 App IDs, three devices, and three installed apps per device. [Apple free provisioning limits](https://developer.apple.com/help/account/basics/about-your-developer-account)
+
+### Physical acceptance check
+
+Open **Progression Lab** after launch. In the Dev Field outside the lab, create and mark a uniquely named item. Quit and reopen Dev to check it persists. Run the installer with a later UTC minute to get a visibly newer build number, then check the same item and mark again. After actual profile expiration, run `--renew` and repeat the check with the same app still installed. For wireless qualification, repeat one update unplugged. These checks require the physical device.
+
+On the inspected Mac, Xcode 26.2 has a development certificate for the configured team. The unsigned DevDebug device build passed and an offline signing preflight confirmed no matching cached Dev profile. CoreDevice reported a paired iPhone 16 Pro with Developer Mode enabled in its cached record, but the installer stopped because the device was unreachable. The Personal Team account session, fresh provisioning, and the physical acceptance checks remain unverified.
+
+## Optional paid distribution workflow
+
+The following TestFlight material documents P0.3a's separate workflow. The free local installer uses development signing and CoreDevice.
+
+### One-time TestFlight setup
 
 1. The Account Holder confirms an active Apple Developer Program membership for the team configured in Xcode (`522376PKLR)) and accepts any pending agreements. In Certificates, Identifiers & Profiles, register the explicit iOS App ID `com.jimharvey.DoAvoid.dev`. If the active paid team differs, reconcile the Dev team in project and script before distribution. [Register an App ID](https://developer.apple.com/help/account/identifiers/register-an-app-id/)
 2. In App Store Connect → Apps → **+ → New App**, create an iOS record for that ID with the name **Do/Avoid Dev** if available, primary language English and SKU `doavoid-dev`. In its TestFlight tab, create an internal group with automatic distribution and add the developer's App Store Connect user. Complete any export compliance prompt for the actual binary. [Create an app record](https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app) · [Internal TestFlight groups](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
 3. Authorize this Mac for provisioning and upload. Use an approved App Store Connect team API key with signing/provisioning and upload access, stored outside the repository. Configure `ASC_KEY_PATH`, `ASC_KEY_ID`, and `ASC_ISSUER_ID` in the build environment. Alternatively, if Xcode already has an authorized account on this Mac, set `DOAVOID_USE_XCODE_ACCOUNT=1`. Xcode automatic signing will attempt to obtain a suitable profile and signing identity. If the team restricts signing, an authorized team member must make the required profile and identity available. Use local credential storage and leave credentials out of chat and source control. [App Store Connect API access](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api) · [Apple signing and distribution](https://developer.apple.com/documentation/Xcode/distributing-your-app-for-beta-testing-and-releases)
 
-## Repeatable delivery
+### Repeatable delivery
 
 On the authorized Mac, from the desired Git checkout:
 
@@ -59,4 +89,4 @@ P0.2 stores the latest archive flag and full daily history. Reconstructing archi
 
 ## Next assignment
 
-**P0.3b — On-device progression review and interaction refinement.** Deliver two internal builds and verify install and update on the iPhone. Use the nine scenarios to review candidate rules and one default skin, then decide whether lifecycle needs a schema change. Finish the core inspection, editing and navigation workflows after that review.
+**On-device progression review and interaction refinement.** Complete the physical acceptance check with two local installs on the iPhone. Use the nine scenarios to review candidate rules and one default skin, then decide whether lifecycle needs a schema change. Finish the core inspection, editing and navigation workflows after that review.

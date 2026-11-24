@@ -99,4 +99,6 @@ Create examples in memory or a development-specific store with no path to the pr
 
 Progression should derive from recorded day labels, item type, creation day, explicit marks, and an injected evaluation day. Preserve the distinction between an implicit Avoid success and a recorded event. The current archive flag captures the latest state. If review calls for reconstructing exact maturation, pause periods, or reactivation dates, those would require explicit lifecycle events or an additive schema change. Do not infer historical archive dates from blank days or store any experimental score as canonical history.
 
-The [Do/Avoid Dev runbook](docs/DOAVOID_DEV.md) covers internal TestFlight provisioning, local delivery, scenario review, and the P0.3b entry conditions.
+### P0.3b — Free local iPhone installation
+
+The [Do/Avoid Dev runbook](docs/DOAVOID_DEV.md) covers the Personal Team installer, USB pairing, wireless updates, and seven-day profile renewal. Start on-device progression review once an in-place install and update preserve a marked Dev item. Confirm renewal after the first profile expires.

@@ -185,7 +185,7 @@ Data remains local.
 
 ## Current Status
 
-For internal iPhone builds and the interactive progression lab, see [Do/Avoid Dev](docs/DOAVOID_DEV.md).
+For free local iPhone installation and the interactive progression lab, see [Do/Avoid Dev](docs/DOAVOID_DEV.md).
 
 Active development.
 
