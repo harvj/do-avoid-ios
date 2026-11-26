@@ -1,0 +1,160 @@
+--- a/DoAvoidApp.swift
++++ b/DoAvoidApp.swift
+@@ -13,7 +13,59 @@
+     
+     var body: some Scene {
+         WindowGroup {
+-            ContentView(store: store)
++            if ProcessInfo.processInfo.arguments.contains("--landing-review") {
++                LandingFieldReview(
++                    showsTypeIndicators: !ProcessInfo.processInfo.arguments.contains("--hide-landing-types")
++                )
++            } else {
++                ContentView(store: store)
++            }
+         }
+     }
+ }
++
++/// Static art direction samples. No persistence, history projection, or progression rules.
++struct LandingFieldReview: View {
++    struct Countdown {
++        let days: Int
++        let fraction: Double
++    }
++
++    struct Row {
++        let color: Color
++        let ink: Color
++        let countdown: Countdown?
++    }
++
++    private static let doLevels = [0xD5D6D3, 0xB5C9AD, 0x90BB91, 0x66A879, 0x408C63, 0x24764D]
++    private static let avoidLevels = [0xA64E4E, 0xC47861, 0xD3A078, 0xB6B38B, 0x8CAE8A, 0x669E80]
++    private let showsTypeIndicators: Bool
++    private let day = CivilDay(containing: Date())
++    private let items: [DoAvoidItem]
++    private let rows: [UUID: Row]
++
++    init(showsTypeIndicators: Bool) {
++        self.showsTypeIndicators = showsTypeIndicators
++        let samples: [(String, DoAvoidKind, Int, Countdown?)] = [
++            ("Read ten pages", .doItem, 4, Countdown(days: 3, fraction: 0.72)),
++            ("Take a walk", .doItem, 3, nil),
++            ("Late caffeine", .avoidItem, 5, Countdown(days: 6, fraction: 0.42)),
++            ("Scroll in bed", .avoidItem, 2, nil),
++            ("Stretch", .doItem, 1, nil),
++        ]
++        let items = samples.map { DoAvoidItem(title: $0.0, kind: $0.1) }
++        self.items = items
++        rows = Dictionary(uniqueKeysWithValues: zip(items, samples).map { item, sample in
++            let palette = item.kind == .doItem ? Self.doLevels : Self.avoidLevels
++            let hex = palette[sample.2 - 1]
++            let color = Color(.sRGB, red: Double(hex >> 16) / 255,
++                              green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255)
++            return (item.id, Row(color: color, ink: Color(red: 0.07, green: 0.13, blue: 0.10), countdown: sample.3))
++        })
++    }
++
++    var body: some View {
++        FieldView(items: items, day: day, reviewRows: rows, showsTypeIndicators: showsTypeIndicators, onAdd: {}) { _ in }
++            .preferredColorScheme(.light)
++    }
++}
+--- a/Views/FieldView.swift
++++ b/Views/FieldView.swift
+@@ -5,6 +5,8 @@
+     let day: CivilDay
+     var skin = ProgressionSkin()
+     var projection: (DoAvoidItem, CivilDay) -> Progression? = { _, _ in nil }
++    var reviewRows: [UUID: LandingFieldReview.Row] = [:]
++    var showsTypeIndicators = false
+     var onAdd: (() -> Void)?
+     let onToggle: (UUID) -> Void
+ 
+@@ -27,10 +29,12 @@
+                                 } label: {
+                                     BarView(
+                                         title: item.title,
+-                                        color: skin.fill(for: item.kind, progression: progression),
++                                        color: reviewRows[item.id]?.color ?? skin.fill(for: item.kind, progression: progression),
+                                         status: item.status(on: day),
+                                         progression: progression,
+-                                        archived: item.isRetired
++                                        archived: item.isRetired,
++                                        reviewRow: reviewRows[item.id],
++                                        typeIndicator: showsTypeIndicators ? item.kind : nil
+                                     )
+                                     .frame(minHeight: rowHeight)
+                                 }
+--- a/Views/BarView.swift
++++ b/Views/BarView.swift
+@@ -6,14 +6,21 @@
+     let status: DailyStatus
+     let progression: Progression?
+     let archived: Bool
++    var reviewRow: LandingFieldReview.Row?
+ 
++    var typeIndicator: DoAvoidKind?
++
++    private var typeLabel: String? {
++        typeIndicator.map { $0 == .doItem ? "Do" : "Avoid" }
++    }
++
+     var body: some View {
+         VStack(spacing: 6) {
+             Text(title)
+                 .font(.system(.title, design: .rounded).weight(.semibold))
+                 .textCase(.uppercase)
+                 .multilineTextAlignment(.center)
+-            if status != .neutral {
++            if reviewRow == nil && status != .neutral {
+                 Image(systemName: status.symbol)
+                     .foregroundStyle(status == .violated ? Color.red : Color.primary)
+                     .accessibilityHidden(true)
+@@ -23,12 +30,42 @@
+                     .font(.caption.weight(.semibold))
+             }
+         }
+-        .padding(12)
++        .foregroundStyle(reviewRow?.ink ?? Color.primary)
++        .padding(.horizontal, reviewRow == nil ? 12 : 58)
++        .padding(.vertical, 12)
+         .frame(maxWidth: .infinity, maxHeight: .infinity)
+         .background(color)
++        .overlay(alignment: .leading) {
++            if let typeLabel {
++                Text(typeLabel.uppercased())
++                    .font(.system(size: 10, weight: .semibold, design: .rounded))
++                    .tracking(0.8)
++                    .foregroundStyle((reviewRow?.ink ?? Color.primary).opacity(0.85))
++                    .padding(16)
++                    .frame(maxHeight: .infinity, alignment: .top)
++                    .accessibilityHidden(true)
++            }
++        }
++        .overlay(alignment: .trailing) {
++            if let row = reviewRow, let countdown = row.countdown {
++                ZStack {
++                    Circle().strokeBorder(row.ink.opacity(0.22), lineWidth: 2)
++                    Circle().trim(from: 0, to: countdown.fraction)
++                        .stroke(row.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
++                        .rotationEffect(.degrees(-90))
++                        .padding(1)
++                    Text(countdown.days.formatted())
++                        .font(.system(.callout, design: .rounded).weight(.semibold).monospacedDigit())
++                }
++                .foregroundStyle(row.ink)
++                .frame(width: 34, height: 34)
++                .padding(16)
++                .frame(maxHeight: .infinity, alignment: .top)
++            }
++        }
+         .accessibilityElement(children: .ignore)
+-        .accessibilityLabel(title)
+-        .accessibilityValue([status.label, archived ? "Archived" : (progression?.mature == true ? "Mature" : nil)]
++        .accessibilityLabel(typeLabel.map { "\($0), \(title)" } ?? title)
++        .accessibilityValue([status.label, reviewRow?.countdown.map { "Estimated \($0.days) days to next level" }, archived ? "Archived" : (progression?.mature == true ? "Mature" : nil)]
+             .compactMap { $0 }.joined(separator: ", "))
+     }
+ }
