@@ -131,14 +131,12 @@ extension DoAvoidItem {
     // Existing prototype thresholds. P0.3 discovery will evaluate candidate rules separately.
     func avoidState(asOf day: CivilDay) -> AvoidState {
         guard kind == .avoidItem else { return .solid }
+        return AvoidState(elapsed: daysSinceViolationOrCreation(asOf: day))
+    }
+
+    func daysSinceViolationOrCreation(asOf day: CivilDay) -> Int {
         let lastViolation = entries.values.filter { $0.isMarked && $0.day <= day }.map(\.day).max()
-        let elapsed = max(0, (lastViolation ?? createdDay).distance(to: day))
-        switch elapsed {
-        case 0..<7: return .solid
-        case 7..<21: return .cracked
-        case 21..<40: return .open
-        default: return .overgrown
-        }
+        return max(0, (lastViolation ?? createdDay).distance(to: day))
     }
 
     mutating func checkForRetirement(asOf day: CivilDay) {

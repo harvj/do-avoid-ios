@@ -6,6 +6,37 @@ struct Progression: Equatable {
     var archived = false
 }
 
+/// A conditional estimate from the existing cycle and recovery milestones.
+/// It has no effect on history, maturity, retirement, or the Field palette.
+struct ProgressionForecast: Equatable {
+    enum Milestone: Equatable {
+        case doCycle
+        case avoid(AvoidState)
+    }
+
+    let milestone: Milestone
+    let days: Int
+    let interval: Int
+
+    var fraction: Double { 1 - Double(days) / Double(interval) }
+
+    static func estimate(for item: DoAvoidItem, on day: CivilDay) -> Self? {
+        guard !item.isRetired, day >= item.createdDay else { return nil }
+        switch item.kind {
+        case .doItem:
+            let markedThroughToday = item.entries.values.lazy.filter { $0.isMarked && $0.day <= day }.count
+            let length = DoAvoidItem.doCycleLength
+            return Self(milestone: .doCycle, days: length - markedThroughToday % length, interval: length)
+        case .avoidItem:
+            let elapsed = item.daysSinceViolationOrCreation(asOf: day)
+            let state = AvoidState(elapsed: elapsed)
+            guard let next = state.next else { return nil }
+            return Self(milestone: .avoid(next), days: next.startDay - elapsed,
+                        interval: next.startDay - state.startDay)
+        }
+    }
+}
+
 #if DOAVOID_LAB
 enum ProgressionCandidate: String, CaseIterable, Identifiable {
     case recent = "Recent activity"

@@ -21,9 +21,15 @@ struct ContentView: View {
     @ObservedObject var store: DoAvoidStore
 
     @State private var appMode: AppMode = .field
+    @State private var showsFieldSettings = false
+    private var indicators = FieldIndicatorSettings()
     #if DOAVOID_LAB
     @State private var showsLab = ProcessInfo.processInfo.arguments.contains("--progression-lab")
     #endif
+
+    init(store: DoAvoidStore) {
+        self.store = store
+    }
 
     var isLandscape: Bool {
         verticalSizeClass == .compact
@@ -59,6 +65,29 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showsLab) { ProgressionLab() }
         #endif
+        .sheet(isPresented: $showsFieldSettings) {
+            NavigationStack {
+                Form {
+                    Section {
+                        Toggle("DO / AVOID labels", isOn: Binding(
+                            get: { indicators.showsTypeLabels }, set: { indicators.showsTypeLabels = $0 }
+                        ))
+                        Toggle("Progression clocks", isOn: Binding(
+                            get: { indicators.showsClocks }, set: { indicators.showsClocks = $0 }
+                        ))
+                    } footer: {
+                        Text("The clocks estimate days to the next milestone. Do assumes a completion each day starting tomorrow. Avoid assumes no further violations. A dash means there is no next milestone to estimate.")
+                    }
+                }
+                .navigationTitle("Field display")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showsFieldSettings = false }
+                    }
+                }
+            }
+        }
         .alert(item: $store.notice) { notice in
             switch notice {
             case .recovered:
@@ -93,7 +122,9 @@ struct ContentView: View {
         } else {
             switch appMode {
             case .field:
-                FieldView(items: store.items, day: store.today, onAdd: openCreate) { id in
+                FieldView(items: store.items, day: store.today, showsTypeLabels: indicators.showsTypeLabels,
+                          showsClocks: indicators.showsClocks, onAdd: openCreate,
+                          onDisplaySettings: { showsFieldSettings = true }) { id in
                     store.toggleToday(for: id)
                 }
             case .create:

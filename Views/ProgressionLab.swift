@@ -206,7 +206,7 @@ struct ProgressionLab: View {
         let skin = ProgressionSkin(doColor: colors.0, avoidColor: colors.1, highStrengthOpacity: intensity)
         switch surface {
         case .field:
-            FieldView(items: displayedItems, day: day, skin: skin, projection: projection) { id in
+            FieldView(items: displayedItems, day: day, skin: skin, projection: projection, showsClocks: false) { id in
                 if let index = history.firstIndex(where: { $0.id == id }) {
                     history[index].toggleMarked(on: day)
                 }
